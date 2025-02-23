@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 class JobStatus(str, Enum):
+    QUEUED = "queued"
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

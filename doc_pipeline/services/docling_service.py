@@ -7,9 +7,12 @@ from typing import List, Optional, Dict, Any
 from docling.document_converter import DocumentConverter
 from docling.chunking import HybridChunker
 from docling.datamodel.base_models import DocumentStream
+import magic.magic
 
 from ..models.document import DocumentChunk
 from ..utils.logging import logger
+from ..utils.metrics import track_processing_time
+from ..config.settings import settings
 
 class ChunkingStrategy:
     """Enum-like class for chunking strategies"""
@@ -25,7 +28,7 @@ class DoclingService:
         chunk_overlap: int = 50,
         default_strategy: str = ChunkingStrategy.HYBRID
     ):
-        self.mime = magic.Magic(mime=True)
+        self.mime = magic.magic.Magic(mime=True)
         self.converter = DocumentConverter()
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -94,14 +97,21 @@ class DoclingService:
         return chunks
 
     def _chunk_by_sentences(self, content: str) -> List[Dict[str, Any]]:
-        """Chunk content based on sentences."""
+        """Chunk content based on sentences with strict size limits."""
         import re
-        sentence_endings = r'[.!?][\s]{1,2}'
-        sentences = re.split(sentence_endings, content)
+        # Split on sentence endings and preserve the endings
+        sentence_pattern = r'([^.!?]+[.!?]+(?:\s+|$))'
+        sentences = re.findall(sentence_pattern, content)
         
         chunks = []
         current_chunk = []
         current_size = 0
+        current_headings = []
+
+        # Track headings
+        for line in content.split('\n'):
+            if line.startswith('#'):
+                current_headings = [line.strip()]
 
         for sentence in sentences:
             sentence = sentence.strip()
@@ -110,25 +120,57 @@ class DoclingService:
 
             sentence_size = len(sentence)
             
-            if current_size + sentence_size > self.chunk_size and current_chunk:
-                chunks.append({
-                    "text": ' '.join(current_chunk),
-                    "headings": []
-                })
-                current_chunk = []
-                current_size = 0
+            # If a single sentence is larger than chunk_size, split it into smaller parts
+            if sentence_size > self.chunk_size:
+                words = sentence.split()
+                current_part = []
+                current_part_size = 0
+                
+                for word in words:
+                    word_size = len(word) + 1  # +1 for space
+                    
+                    if current_part_size + word_size > self.chunk_size and current_part:
+                        chunks.append({
+                            "text": ' '.join(current_part),
+                            "headings": current_headings.copy()
+                        })
+                        current_part = []
+                        current_part_size = 0
+                    
+                    current_part.append(word)
+                    current_part_size += word_size
+                
+                if current_part:
+                    chunks.append({
+                        "text": ' '.join(current_part),
+                        "headings": current_headings.copy()
+                    })
             
-            current_chunk.append(sentence)
-            current_size += sentence_size
+            # Normal case: try to combine sentences up to chunk_size
+            elif current_size + sentence_size <= self.chunk_size:
+                current_chunk.append(sentence)
+                current_size += sentence_size
+            else:
+                if current_chunk:
+                    chunks.append({
+                        "text": ' '.join(current_chunk),
+                        "headings": current_headings.copy()
+                    })
+                current_chunk = [sentence]
+                current_size = sentence_size
 
+        # Add any remaining content
         if current_chunk:
             chunks.append({
                 "text": ' '.join(current_chunk),
-                "headings": []
+                "headings": current_headings.copy()
             })
 
+        # Verify chunk sizes
+        logger.debug(f"Created {len(chunks)} chunks with sizes: {[len(c['text']) for c in chunks]}")
         return chunks
 
+    @track_processing_time
     async def process_document(
         self,
         content: bytes,

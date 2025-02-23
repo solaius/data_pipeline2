@@ -8,6 +8,7 @@ from prometheus_client import make_asgi_app
 from .routes import documents
 from ..config.settings import settings
 from ..utils.logging import logger
+from ..config.logging_config import configure_logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,15 +53,19 @@ def start_server():
     """Start the FastAPI server."""
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "50007"))
+    log_level = os.getenv("LOG_LEVEL", "info").lower()
     
-    print(f"Starting server on {host}:{port}")
+    # Configure logging
+    configure_logging(level=log_level.upper())
+    logger.info(f"Starting server on {host}:{port}")
+    
     uvicorn.run(
         "doc_pipeline.api.main:app",
         host=host,
         port=port,
         reload=True,
         access_log=True,
-        log_level="debug"
+        log_level=log_level
     )
 
 if __name__ == "__main__":

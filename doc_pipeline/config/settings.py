@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
@@ -35,8 +35,16 @@ class Settings(BaseSettings):
     # Document Processing Settings
     MAX_CHUNK_SIZE: int = 1000
     BATCH_SIZE: int = 50
+    CHUNK_OVERLAP: int = 50
+    DEFAULT_CHUNKING_STRATEGY: str = "hybrid"
+    TOKENIZER_NAME: str = "BAAI/bge-small-en-v1.5"
+
+    # Chunking Settings
+    CHUNK_MIN_SIZE: int = 100
+    CHUNK_MAX_SIZE: int = 2000
+    SENTENCE_OVERLAP: bool = True
+    PRESERVE_MARKDOWN_STRUCTURE: bool = True
     
-    class Config:
-        case_sensitive = True
+    model_config = ConfigDict(case_sensitive=True)
 
 settings = Settings()

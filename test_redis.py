@@ -1,11 +1,11 @@
 import asyncio
-import aioredis
+import redis.asyncio as rds  # Use the async version
 from doc_pipeline.config.settings import settings
 
 async def test_redis_connection():
     print(f"Testing connection to Redis at {settings.REDIS_HOST}:{settings.REDIS_PORT}")
     
-    redis = aioredis.from_url(
+    redis = rds.from_url(
         f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
         password=settings.REDIS_PASSWORD,
         encoding="utf-8",
@@ -29,7 +29,7 @@ async def test_redis_connection():
         print(f"Error connecting to Redis: {str(e)}")
     
     finally:
-        await redis.close()
+        await redis.aclose()  # Use aclose() instead of close()
 
 if __name__ == "__main__":
     asyncio.run(test_redis_connection())

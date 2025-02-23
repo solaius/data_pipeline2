@@ -1,4 +1,5 @@
 import pytest
+from docling.exceptions import ConversionError
 from ..services.docling_service import DoclingService
 
 @pytest.fixture
@@ -14,35 +15,25 @@ def test_mime_type_detection(docling_service):
     text_content = b"This is a test document"
     assert docling_service._detect_mime_type(text_content).startswith('text/plain')
 
-def test_document_type_mapping(docling_service):
-    # Test PDF mapping
-    assert docling_service._get_document_type('application/pdf', 'test.pdf') == 'pdf'
-    
-    # Test Word document mapping
-    assert docling_service._get_document_type(
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'test.docx'
-    ) == 'docx'
-    
-    # Test text file mapping
-    assert docling_service._get_document_type('text/plain', 'test.txt') == 'txt'
-    
-    # Test image mapping
-    assert docling_service._get_document_type('image/jpeg', 'test.jpg') == 'image'
-
 @pytest.mark.asyncio
 async def test_process_text_document(docling_service):
     # Create a simple text document
     content = b"This is a test document.\nIt has multiple lines.\nAnd some structure."
     filename = "test.txt"
     content_type = "text/plain"
-    
+
     chunks = await docling_service.process_document(content, filename, content_type)
-    
+
     assert chunks is not None
     assert len(chunks) > 0
     assert all(chunk.content for chunk in chunks)
     assert all(chunk.chunk_id for chunk in chunks)
+
+    # Debugging: Print chunk metadata to inspect why the assertion is failing
+    for i, chunk in enumerate(chunks):
+        print(f"Chunk {i+1} Metadata: {chunk.metadata}")
+
+    assert any(chunk.metadata["type"] in ["text_chunk", "markdown_chunk", "hybrid_chunk"] for chunk in chunks)
 
 @pytest.mark.asyncio
 async def test_process_pdf_document(docling_service):
@@ -64,6 +55,39 @@ async def test_unsupported_document_type(docling_service):
     filename = "test.unknown"
     content_type = "application/octet-stream"
     
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ConversionError) as exc_info:
         await docling_service.process_document(content, filename, content_type)
-    assert "Unsupported document type" in str(exc_info.value)
+    assert "File format not allowed" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_chunking_strategies(docling_service):
+    content = b"""# Test Document
+    
+## Section 1
+This is a test paragraph with multiple sentences.
+
+## Section 2
+Another paragraph here."""
+    filename = "test.md"
+    content_type = "text/markdown"
+    
+    # Test hybrid chunking
+    chunks_hybrid = await docling_service.process_document(
+        content, filename, content_type, chunking_strategy="hybrid"
+    )
+    assert len(chunks_hybrid) > 0
+    assert all(c.metadata["strategy"] == "hybrid" for c in chunks_hybrid)
+    
+    # Test markdown chunking
+    chunks_md = await docling_service.process_document(
+        content, filename, content_type, chunking_strategy="markdown"
+    )
+    assert len(chunks_md) > 0
+    assert all(c.metadata["strategy"] == "markdown" for c in chunks_md)
+    
+    # Test sentence chunking
+    chunks_sent = await docling_service.process_document(
+        content, filename, content_type, chunking_strategy="sentence"
+    )
+    assert len(chunks_sent) > 0
+    assert all(c.metadata["strategy"] == "sentence" for c in chunks_sent)

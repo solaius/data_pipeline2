@@ -1,17 +1,24 @@
 import pytest
 import asyncio
+import pytest_asyncio
 from ..services.document_processor import DocumentProcessor
 from ..models.document import Document, DocumentStatus
 from ..models.job import Job, JobStatus
 import tempfile
 import os
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def document_processor():
     processor = DocumentProcessor()
     await processor.start()
-    yield processor
-    await processor.stop()
+    
+    try:
+        yield processor  # Yield control to the tests
+    finally:
+        await processor.stop()
+        # Ensure any background tasks are fully cancelled
+        await asyncio.sleep(0.5)  # Small delay to let cleanup finish
+
 
 @pytest.mark.asyncio
 async def test_submit_document(document_processor):
