@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import tempfile
 import os
@@ -111,7 +111,7 @@ class DocumentProcessor:
             document.chunks = chunks
             document.status = DocumentStatus.COMPLETED
             job.status = JobStatus.COMPLETED
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             
             # Update document in storage
             await self.storage.store_document(document)
@@ -122,7 +122,7 @@ class DocumentProcessor:
             document.error_message = str(e)
             job.status = JobStatus.FAILED
             job.error_message = str(e)
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(datetime.timezone.utc)
             logger.error(f"Failed to process document {document.doc_id}: {str(e)}", exc_info=True)
             raise
     
