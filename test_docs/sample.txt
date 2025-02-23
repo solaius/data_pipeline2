@@ -1,0 +1,26 @@
+Title: Sample Document
+
+This is a sample text document that contains multiple paragraphs and some structure.
+
+Section 1: Introduction
+This section introduces the main concepts and ideas that will be discussed in the document.
+It contains multiple lines and demonstrates how the document processor handles text formatting.
+
+Section 2: Technical Details
+- Point 1: Document processing
+- Point 2: Text chunking
+- Point 3: Metadata extraction
+
+Section 3: Tables
+Here's a simple table representation:
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Data 1   | Data 2   | Data 3   |
+| Info 1   | Info 2   | Info 3   |
+
+Section 4: Conclusion
+This concludes our sample document. The document processor should properly handle:
+1. Document structure
+2. Text formatting
+3. Tables
+4. Lists and enumerations
