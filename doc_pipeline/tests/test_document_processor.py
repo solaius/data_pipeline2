@@ -45,13 +45,13 @@ async def test_document_processing(document_processor):
     content = b"This is a test document for processing"
     filename = "test_processing.txt"
     content_type = "text/plain"
-    
+
     document = await document_processor.submit_document(
         content=content,
         filename=filename,
         content_type=content_type
     )
-    
+
     # Wait for processing to complete
     max_wait = 10  # seconds
     while max_wait > 0:
@@ -60,11 +60,13 @@ async def test_document_processing(document_processor):
             break
         await asyncio.sleep(1)
         max_wait -= 1
-    
+
     # Get the processed document
     processed_doc = await document_processor.get_document(document.doc_id)
     assert processed_doc is not None
     assert processed_doc.status == DocumentStatus.COMPLETED
+    
+    print(f"Processed document chunks: {processed_doc.chunks}")  # 🔹 Debugging output
     assert len(processed_doc.chunks) > 0
 
 @pytest.mark.asyncio

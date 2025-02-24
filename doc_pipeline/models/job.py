@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 class JobStatus(str, Enum):
@@ -24,14 +24,16 @@ class Job(BaseModel):
     job_type: JobType
     status: JobStatus
     priority: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)  # Fixed 'any' -> 'Any'
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     progress: float = 0.0
     total_items: int = 0
     processed_items: int = 0
+
 
 class JobResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

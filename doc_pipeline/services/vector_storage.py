@@ -1,12 +1,33 @@
 from elasticsearch import AsyncElasticsearch
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Literal
+from datetime import datetime, UTC
+from prometheus_client import Counter, Histogram
 from ..models.document import DocumentEmbedding
 from ..config.settings import settings
+from .search_cache import SearchCache
+
+# Prometheus metrics
+VECTOR_STORE_OPERATIONS = Counter(
+    'vector_store_operations_total',
+    'Total number of vector store operations',
+    ['operation', 'status']
+)
+VECTOR_SEARCH_LATENCY = Histogram(
+    'vector_search_latency_seconds',
+    'Time spent performing vector search',
+    ['provider']
+)
 
 class VectorStorage:
     def __init__(self):
+         # Ensure scheme is explicitly added
+        es_host = settings.ELASTICSEARCH_HOST
+        if not es_host.startswith("http://") and not es_host.startswith("https://"):
+            scheme = "https" if settings.ELASTICSEARCH_USE_SSL else "http"
+            es_host = f"{scheme}://{es_host}"
+        
         self.es = AsyncElasticsearch(
-            hosts=[f"{settings.ELASTICSEARCH_HOST}:{settings.ELASTICSEARCH_PORT}"],
+            hosts=[f"{es_host}:{settings.ELASTICSEARCH_PORT}"],
             basic_auth=(
                 settings.ELASTICSEARCH_USERNAME,
                 settings.ELASTICSEARCH_PASSWORD
